@@ -35,6 +35,25 @@ extern void eth_halt(void);
 /* U-Boot type image header */
 image_header_t header;
 
+struct tplink_hotgen_header {
+	u32	flags;			/* header flags 		*/
+	u32	F1_offset;		/* offset to firmware 1 */
+	u32	F2_offset;		/* offset to firmware 2 */
+};
+
+typedef enum
+{
+	bank_min = 0,
+	bank_1 = 1,
+	bank_2 = 2,
+	bank_max = 3
+}HotgenFirmwareBank;
+
+#define HOTGEN_FIRMWARE_BANK_MASK		0x3
+#define TPLINK_HOTGEN_OFFS              0x20000
+#define TPLINK_HOTGEN_SIZE      		0x10000
+#define TPLINK_FIRMWARE_PARTITION_SIZE  0x3e0000	/* 62 blocks - 62 * 64KB */
+
 /* Default load address */
 u32 load_addr = CFG_LOAD_ADDR;
 
@@ -396,6 +415,7 @@ int do_bootm(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	u32 unc_len = CFG_BOOTM_LEN;
 	image_header_t *hdr = &header;
 	tplink_image_header_t *tpl_hdr;
+	struct tplink_hotgen_header hotgen = {0};
 
 	/*
 	 * By default don't verify data CRC checksum,
@@ -404,9 +424,29 @@ int do_bootm(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	s = getenv("verify_data");
 	verify = (s && (*s == 'y')) ? 1 : 0;
 
-	if (argc < 2) {
-		addr = load_addr;
-	} else {
+	if (argc == 2)
+	{
+		addr = (u32)CFG_LOAD_ADDR;
+		memmove(&hotgen, (char *)addr, sizeof(struct tplink_hotgen_header));
+
+		if ((hotgen.flags & HOTGEN_FIRMWARE_BANK_MASK) == bank_1)
+		{
+			addr = (u32)((CFG_LOAD_ADDR - TPLINK_HOTGEN_OFFS) + hotgen.F1_offset);
+		}
+		else if ((hotgen.flags & HOTGEN_FIRMWARE_BANK_MASK) == bank_2)
+		{
+			addr = (u32)((CFG_LOAD_ADDR - TPLINK_HOTGEN_OFFS) + hotgen.F2_offset);
+		}
+		else
+		{
+			printf ("Hotgen partition corrupted !! flags(%08x) f1_offset(%08x) f2_offset(%08x)\n", 
+				hotgen.flags, hotgen.F1_offset, hotgen.F2_offset);
+			printf ("Recover Hotgen partition !!\n");
+			// TODO recover this
+		}
+	}
+	else
+	{
 		addr = simple_strtoul(argv[1], NULL, 16);
 	}
 

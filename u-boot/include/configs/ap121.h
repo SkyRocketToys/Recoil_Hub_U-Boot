@@ -243,7 +243,7 @@
 
 	#define CONFIG_BOOTARGS	"console=ttyS0,115200 root=31:02 "\
 				"rootfstype=squashfs init=/sbin/init "\
-				"mtdparts=ar7240-nor0:128k(u-boot),1024k(kernel),2816k(rootfs),64k(config),64k(art)"
+				"mtdparts=ar7240-nor0:128k(u-boot),64k(hotgen),1024k(kernel),2752k(rootfs),64k(config),64k(art)"
 
 #elif defined(CONFIG_FOR_TPLINK_WR710N_V1)
 
